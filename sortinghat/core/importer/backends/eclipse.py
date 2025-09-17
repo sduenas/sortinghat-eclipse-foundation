@@ -23,10 +23,8 @@ import requests
 from django.conf import settings
 from django.db.models import (Q, Subquery)
 
-from requests_oauth2client import (
-    BearerToken,
-    OAuth2Client
-)
+from requests_oauth2client import OAuth2Client
+from requests_oauth2client.tokens import ExpiredAccessToken
 
 from grimoirelab_toolkit.datetime import (
     str_to_datetime,
@@ -164,6 +162,8 @@ class EclipseFoundationAccountsImporter(IdentitiesImporter):
                     org = Organization(name=company)
                     enr = Enrollment(org)
                     individual.enrollments.append(enr)
+
+            logger.info(f"Eclipse account processed; account={account['name']}; changed={account['changed']}")
 
             yield individual
 
@@ -314,18 +314,19 @@ class EclipseFoundationAPIClient:
         max_retries = self.MAX_RETRIES
 
         while retries < max_retries:
-            response = requests.get(url, params=params, auth=self.token)
+            try:
+                response = requests.get(url, params=params, auth=self.token)
+            except ExpiredAccessToken:
+                # Refresh token and try again
+                self.login(self.user_id, self.password)
+                retries += 1
+                continue
 
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 403:
-                # Refresh token if needed and try again
                 if self.token.expires_at <= datetime_utcnow():
-                    self.token = self._authenticate(
-                        self.user_id,
-                        self.password,
-                        self.ECLIPSE_SCOPE,
-                    )
+                    self.login(self.user_id, self.password)
                 retries += 1
             elif 500 <= response.status_code < 600:
                 # Errors could have been related to server overloading
@@ -351,4 +352,4 @@ class EclipseFoundationAPIClient:
         )
         token = oauth2client.client_credentials(scope=scope)
 
-        return BearerToken(token)
+        return token

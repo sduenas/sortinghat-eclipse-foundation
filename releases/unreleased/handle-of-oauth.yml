@@ -1,0 +1,10 @@
+---
+title: Handle of OAuth expired token
+category: fixed
+author: Santiago Dueñas <sduenas@bitergia.com>
+issue: null
+notes: >
+  There was a bug making that the expiration time
+  for a token was set to null. The token was not
+  correctly initialized preventing the refresh of
+  that token.

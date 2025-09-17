@@ -1,0 +1,7 @@
+---
+title: OAuth2 token refreshing
+category: added
+author: Santiago Dueñas <sduenas@bitergia.com>
+issue: null
+notes: >
+  OAuth2 token will be refreshed when they expired.
